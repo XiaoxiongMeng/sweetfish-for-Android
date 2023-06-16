@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room</title>
+</head>
+<body>
+    <h1>Chat Room</h1>
+    <form action="/socketio/" method="POST">
+        <input type="text" name="username" placeholder="Enter username">
+        <button type="submit">Join Chat Room</button>
+    </form>
+    <div id="chat-area"></div>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client/dist/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        document.querySelector('#chat-area').innerHTML = '';
+        socket.on('chat', (message) => {
+            document.querySelector('#chat-area').innerHTML += message + '<br>';
+        });
+        socket.on('chat_message', (message) => {
+            console.log(`Received message: ${message}`);
+        });
+        socket.on('join_chatroom', (username) => {
+            console.log(`User joined the chatroom: ${username}`);
+            socket.join('/chatroom', username);
+        });
+        socket.on('leave_chatroom', (username) => {
+            console.log(`User left the chatroom: ${username}`);
+            socket.leave('/chatroom', username);
+        });
+    </script>
+</body>
+</html>

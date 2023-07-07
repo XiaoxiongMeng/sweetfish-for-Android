@@ -1,4 +1,6 @@
 from flask import request, jsonify
+
+from chat import confirm
 from models import Post, User, db
 from . import buyer_operation
 from utils.functions import fetch_posts_info, addview, check_token, show_posts
@@ -37,7 +39,7 @@ def fav():
         fav_num = post.fav - 1
         post.fav = fav_num
         db.session.commit()
-        return jsonify(code=200, message="取消收藏成功.")
+        return jsonify(code=200, message="取消收藏成功.", data="0")
     else:
         fav_list.append(post_id)
         user.fav_list = str(fav_list)
@@ -47,7 +49,7 @@ def fav():
         post.fav = fav_num
         db.session.commit()
         addview(post_id)
-        return jsonify(code=200, message="收藏成功.")
+        return jsonify(code=200, message="收藏成功.", data="1")
 
 
 
@@ -75,6 +77,7 @@ def posts():
     if type(user_id) != type(1):  # 检验token
         return jsonify(code=400, message="身份信息验证失效，请重新登陆.")
     rank = show_posts()
+
     lists = []
     for i in rank:
         temp = fetch_posts_info(i[1])
@@ -110,18 +113,26 @@ def give_price():
         list_gave[str(post_id)]=price
     y.toke_post=str(list_gave)
     db.session.commit()
+    confirm(post_id, price, x.title, x.user_id, user_id)
     return jsonify(code=200, message=f"成功叫价！当前价格为{price}")
 
 
-@buyer_operation.route("/buyer/gave", methods=["GET"])
+@buyer_operation.route("/buyer/gave", methods=["POST"])
 def gave():
     user_id = check_token(request.headers)
     if type(user_id) != type(1):  # 检验token
         return jsonify(code=400, message="身份信息验证失效，请重新登陆.")
-    posts_gave=User.query.filter_by(id=user_id).first().toke_post
+    pid = request.form['pid']
+    dict = {"price":0}
+    posts_gave = eval(User.query.filter_by(id=user_id).first().toke_post)
     if posts_gave is None:
-        return jsonify(code="200", message="成功",data="")
+        return jsonify(code="404", message="开价列表为空。")
+    try:
+        dict['price']=posts_gave[pid]
+    except:
+        return jsonify(code="404", message="没找到该贴开价记录")
+
     else:
-        return jsonify(code="200", message="成功", data=posts_gave)
+        return jsonify(code="200", message="成功", data=dict)
 
 

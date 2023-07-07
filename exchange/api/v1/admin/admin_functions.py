@@ -1,4 +1,4 @@
-from models import User, Post, db
+from models import User, Post, db, Report
 from utils.functions import check_token
 from . import admin_operation
 from ..user import users
@@ -17,8 +17,11 @@ def get_audit():
         return jsonify(code=403, message="您不是系统管理员，无权对帖子进行审核！")
     posts = Post.query.filter_by(is_approved="0").all()
     for i in range(len(posts)):
-        lists.append({"id": posts[i].id, "user_id": posts[i].user_id, "title": posts[i].title,
-                      "content": posts[i].content, "cover":posts[i].cover})
+        avatar = User.query.filter_by(id=posts[i].user_id).all()[0].avatar
+        username = User.query.filter_by(id=posts[i].user_id).all()[0].username
+        lists.append({"id": posts[i].id, "title": posts[i].title,
+                      "content": posts[i].content, "buy_price": posts[i].buy_price, "price": posts[i].price,
+                      "cover": posts[i].cover, "username": username, "avatar": avatar})
     return jsonify(code=200, message="以下是待审核的交易帖", data={"post_list": lists})
 
 
@@ -89,12 +92,13 @@ def report():
     x = User.query.filter_by(id=user_id).first()
     if x.permission == 0:
         return jsonify(code=403, message="您不是系统管理员！")
-    x = User.query.filter_by(permission=-2).all()
+    x = Report.query.filter_by(is_done=0).all()
     lists=[]
     if x is None:
-        return jsonify(code=200,message="暂无被举报用户")
+        return jsonify(code=200,message="暂无被举报内容")
     for i in x:
-        temp = {"username": i.username,"id": i.id,"reason": i.reason}
+        m = User.query.filter_by(id=i.to_user).first()
+        temp = {"username": m.username, "id": i.to_user, "reason": i.reason, "pics": i.pics.strip("<").strip(">").split("><")}
         lists.append(temp)
     return jsonify(code=200,message="获取成功",data=lists)
 
@@ -121,3 +125,19 @@ def back_money():
     to_user.balance = to_user.balance + money
     db.session.commit()
     return jsonify(code=200,message="退钱成功")
+
+
+@admin_operation.route("/admin/give_money", methods=["POST"])
+def give_money():
+    to_id = request.form['to']  # 把钱给谁
+    money = int(request.form['money'])  # 金额
+    user_id = check_token(request.headers)
+    if type(user_id) != type(1):  # 检验token
+        return jsonify(code=400, message="身份信息验证失效，请重新登陆.")
+    x = User.query.filter_by(id=user_id).first()
+    if x.permission == 0:
+        return jsonify(code=403, message="您不是系统管理员！")
+    to_user=User.query.filter_by(id=to_id).first()
+    to_user.balance = to_user.balance + money
+    db.session.commit()
+    return jsonify(code=200,message="给钱成功")

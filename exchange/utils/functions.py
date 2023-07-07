@@ -63,6 +63,7 @@ def generate_token(user_id, username, permission):
 
 
 def fetch_posts_info(id):
+    print(f"Querying post {id}.")
     addview(id)
     pic_urls = []
     posts = Post.query.filter_by(id=id).first()
@@ -74,10 +75,13 @@ def fetch_posts_info(id):
     buy_price = posts.buy_price
     fav = posts.fav
     now_buyer=posts.is_hangon
-    pic_url_temp = re.findall("<.*?>", posts.pic_urls)
-    for u in range(len(pic_url_temp)):
-        pic_url_temp[u] = pic_url_temp[u].strip("<")
-        pic_urls.append(pic_url_temp[u].strip(">"))
+    if posts.pic_urls:
+        pic_url_temp = re.findall("<.*?>", posts.pic_urls)
+        for u in range(len(pic_url_temp)):
+            pic_url_temp[u] = pic_url_temp[u].strip("<")
+            pic_urls.append(pic_url_temp[u].strip(">"))
+    else:
+        pic_urls = []
     username = User.query.filter_by(id=users_id).all()[0].username
     avatar = User.query.filter_by(id=users_id).all()[0].avatar
     return {"post_id": post_id, "user_id": users_id, "title": title, "content": content, "price": price,
@@ -105,10 +109,10 @@ def show_posts():
     view_per = random.randint(0, 20)
     fav_per = random.randint(0,30)
     rand_per = 100-view_per-fav_per
-    posts = Post.query.filter_by(is_approved=1,buyer_id=0).all()
+    posts = Post.query.filter_by(is_approved=1, buyer_id=0).all()
     nums = len(posts)
     weight = []
-    for i in range(max(nums,8)):
+    for i in range(min(nums, 8)):
         view = posts[i].view
         fav = posts[i].fav
         sc = random.randint(1, 100)
@@ -118,3 +122,10 @@ def show_posts():
     return res
 
 
+def get_turnover(id):
+    turnover = 0
+    y = Post.query.filter_by(user_id=id)
+    for i in y:
+        if i.buyer_id != 0:
+            turnover += 1
+    return turnover
